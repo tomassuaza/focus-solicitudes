@@ -4,6 +4,7 @@ import Login from './pages/Login.jsx';
 import NuevaSolicitud from './pages/NuevaSolicitud.jsx';
 import MisTareas from './pages/MisTareas.jsx';
 import Reportes from './pages/Reportes.jsx';
+import Clientes from './pages/Clientes.jsx';
 
 function Navbar() {
   const { user, logout } = useAuth();
@@ -16,6 +17,9 @@ function Navbar() {
         </NavLink>
         <NavLink to="/tareas" className={({ isActive }) => (isActive ? 'active' : '')}>
           Mis tareas
+        </NavLink>
+        <NavLink to="/clientes" className={({ isActive }) => (isActive ? 'active' : '')}>
+          Clientes
         </NavLink>
         <NavLink to="/reportes" className={({ isActive }) => (isActive ? 'active' : '')}>
           Reportes
@@ -46,6 +50,7 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/nueva" element={<Protegida><NuevaSolicitud /></Protegida>} />
           <Route path="/tareas" element={<Protegida><MisTareas /></Protegida>} />
+          <Route path="/clientes" element={<Protegida><Clientes /></Protegida>} />
           <Route path="/reportes" element={<Protegida><Reportes /></Protegida>} />
           <Route path="*" element={<Navigate to="/nueva" replace />} />
         </Routes>

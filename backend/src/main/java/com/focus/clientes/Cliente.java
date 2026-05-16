@@ -43,4 +43,6 @@ public class Cliente {
     public String getNombre() { return nombre; }
     public TipoCliente getTipo() { return tipo; }
     public boolean isActivo() { return activo; }
+
+    public void setActivo(boolean activo) { this.activo = activo; }
 }

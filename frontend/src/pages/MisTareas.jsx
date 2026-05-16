@@ -8,6 +8,7 @@ const ESTADOS = ['', 'PENDIENTE', 'EN_CURSO', 'COMPLETADA', 'CANCELADA'];
 export default function MisTareas() {
   const [filtros, setFiltros] = useState({ unidad: '', estado: '' });
   const [tareas, setTareas] = useState([]);
+  const [solicitudesElegibles, setSolicitudesElegibles] = useState([]);
   const [error, setError] = useState(null);
   const [cargando, setCargando] = useState(false);
   const [crearForm, setCrearForm] = useState({ solicitudId: '' });
@@ -16,8 +17,16 @@ export default function MisTareas() {
     setCargando(true);
     setError(null);
     try {
-      const data = await tareasApi.listar(filtros);
-      setTareas(data || []);
+      const [tareasData, solicitudesData] = await Promise.all([
+        tareasApi.listar(filtros),
+        solicitudesApi.listar(),
+      ]);
+      setTareas(tareasData || []);
+      // Solicitudes en estado REGISTRADA o APROBADA pueden volverse tarea
+      const elegibles = (solicitudesData || []).filter(
+        (s) => s.estado === 'REGISTRADA' || s.estado === 'APROBADA'
+      );
+      setSolicitudesElegibles(elegibles);
     } catch (e) {
       setError(e.message);
     } finally {
@@ -98,18 +107,35 @@ export default function MisTareas() {
 
       <div className="card">
         <h3 style={{ marginTop: 0 }}>Crear tarea desde solicitud</h3>
-        <form onSubmit={crearDesdeSolicitud} style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
-          <div className="field" style={{ marginBottom: 0 }}>
-            <label htmlFor="sid">ID de solicitud</label>
-            <input
-              id="sid"
-              type="number"
-              value={crearForm.solicitudId}
-              onChange={(e) => setCrearForm({ solicitudId: e.target.value })}
-            />
-          </div>
-          <button className="btn" type="submit">Crear tarea</button>
-        </form>
+        <p className="muted" style={{ marginTop: 0 }}>
+          Selecciona una solicitud REGISTRADA o APROBADA para convertirla en tarea ejecutable.
+        </p>
+        {solicitudesElegibles.length === 0 ? (
+          <p className="muted">
+            No hay solicitudes elegibles. Crea una desde <strong>Nueva solicitud</strong> primero.
+          </p>
+        ) : (
+          <form onSubmit={crearDesdeSolicitud} style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
+            <div className="field" style={{ marginBottom: 0, flex: 1 }}>
+              <label htmlFor="sid">Solicitud</label>
+              <select
+                id="sid"
+                value={crearForm.solicitudId}
+                onChange={(e) => setCrearForm({ solicitudId: e.target.value })}
+              >
+                <option value="">— elige una solicitud —</option>
+                {solicitudesElegibles.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    #{s.id} · {s.cliente} · {s.tipo} · {s.unidad} · {s.descripcion.slice(0, 50)}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <button className="btn" type="submit" disabled={!crearForm.solicitudId}>
+              Crear tarea
+            </button>
+          </form>
+        )}
       </div>
 
       <table className="table">

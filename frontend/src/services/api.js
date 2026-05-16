@@ -55,6 +55,13 @@ export const solicitudesApi = {
   rechazar: (id) => request(`/api/solicitudes/${id}/rechazar`, { method: 'POST' }),
 };
 
+// === Clientes ===
+export const clientesApi = {
+  listar: () => request('/api/clientes'),
+  crear: (data) => request('/api/clientes', { method: 'POST', body: JSON.stringify(data) }),
+  desactivar: (id) => request(`/api/clientes/${id}`, { method: 'DELETE' }),
+};
+
 // === Tareas ===
 export const tareasApi = {
   listar: (filtros = {}) => {

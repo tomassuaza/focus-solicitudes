@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { solicitudesApi } from '../services/api.js';
+import { useEffect, useState } from 'react';
+import { solicitudesApi, clientesApi } from '../services/api.js';
 import { validarNuevaSolicitud } from '../utils/validators.js';
 
 const TIPOS = ['MENSUAL', 'ADICIONAL', 'PROYECTO_ESPECIAL', 'PUNTUAL', 'URGENCIA'];
@@ -16,9 +16,21 @@ export default function NuevaSolicitud() {
     unidadSugerida: '',
     plazo: '',
   });
+  const [clientes, setClientes] = useState([]);
   const [errores, setErrores] = useState({});
   const [estado, setEstado] = useState({ tipo: null, mensaje: null });
   const [guardando, setGuardando] = useState(false);
+
+  useEffect(() => {
+    clientesApi.listar()
+      .then((data) => {
+        setClientes(data || []);
+        if (data && data.length > 0) {
+          setForm((f) => ({ ...f, clienteId: data[0].id }));
+        }
+      })
+      .catch((e) => setEstado({ tipo: 'error', mensaje: 'No se pudieron cargar los clientes: ' + e.message }));
+  }, []);
 
   function update(campo, valor) {
     setForm((f) => ({ ...f, [campo]: valor }));
@@ -66,13 +78,19 @@ export default function NuevaSolicitud() {
 
       <form className="card" onSubmit={onSubmit} aria-label="Formulario de nueva solicitud">
         <div className="field">
-          <label htmlFor="clienteId">Cliente (ID)</label>
-          <input
+          <label htmlFor="clienteId">Cliente *</label>
+          <select
             id="clienteId"
-            type="number"
             value={form.clienteId}
             onChange={(e) => update('clienteId', Number(e.target.value))}
-          />
+          >
+            {clientes.length === 0 && <option value="">— cargando clientes —</option>}
+            {clientes.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.nombre} ({c.tipo})
+              </option>
+            ))}
+          </select>
           {errores.clienteId && <span className="field-error">{errores.clienteId}</span>}
         </div>
 

@@ -39,17 +39,23 @@ public class SecurityConfig {
     }
 
     /**
-     * En perfil dev se exponen todos los endpoints sin auth para facilitar pruebas locales.
-     * Esto NO aplica en staging/prod.
+     * En perfil dev se exponen todos los endpoints sin auth para facilitar pruebas locales,
+     * PERO el JwtAuthenticationFilter sigue activo. Esto permite que cuando llega un JWT
+     * valido (ej. del endpoint /api/auth/demo), el SecurityContext se rellene y
+     * los @PreAuthorize de los endpoints (control por rol) funcionen correctamente.
+     *
+     * En staging/prod usa el otro bean (securityFilterChain) que tambien requiere auth.
      */
     @Bean
     @Profile("dev")
-    public SecurityFilterChain securityFilterChainDev(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChainDev(HttpSecurity http,
+                                                       JwtAuthenticationFilter jwtFilter) throws Exception {
         http
             .cors(c -> c.configurationSource(corsSource()))
             .csrf(csrf -> csrf.disable())
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(reg -> reg.anyRequest().permitAll())
+            .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
             .headers(h -> h.frameOptions(f -> f.disable()));
         return http.build();
     }

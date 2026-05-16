@@ -1,0 +1,104 @@
+# =============================================================
+# CI pipeline — Sistema Unico de Solicitudes (Focus)
+#
+# En cada push y PR a main:
+#   1) Backend: build + tests unitarios e integracion + checkstyle + JaCoCo gate (>=80% modulos criticos)
+#   2) Frontend: lint + tests + build de produccion
+#
+# Los fallos se distinguen por tipo (steps separados). El JaCoCo gate
+# BLOQUEA el merge cuando la cobertura cae bajo 80% en modulos criticos.
+#
+# No se hace deploy automatico — el despliegue a Railway/Vercel es manual.
+# =============================================================
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend:
+    name: Backend (Java + Spring Boot)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build (compile)
+        run: mvn -B -ntp compile
+
+      - name: Analisis estatico (Checkstyle)
+        run: mvn -B -ntp checkstyle:check
+
+      - name: Tests unitarios + integracion
+        env:
+          SPRING_PROFILES_ACTIVE: test
+        run: mvn -B -ntp test
+
+      - name: Quality gate (JaCoCo >=80% modulos criticos)
+        run: mvn -B -ntp verify -DskipITs=false
+
+      - name: SpotBugs (best effort)
+        run: mvn -B -ntp spotbugs:check
+        continue-on-error: true
+
+      - name: Subir reporte de cobertura
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-report
+          path: backend/target/site/jacoco/
+          if-no-files-found: ignore
+
+  frontend:
+    name: Frontend (React + Vite)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Instalar dependencias
+        run: npm ci || npm install --no-audit --no-fund
+
+      - name: Lint (ESLint)
+        run: npm run lint
+        continue-on-error: true
+
+      - name: Tests con cobertura
+        run: npm run test:coverage
+
+      - name: Build de produccion
+        run: npm run build
+
+      - name: Subir bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist/
+          if-no-files-found: ignore
+
+  # Gate final: el merge a main requiere que AMBOS jobs pasen.
+  # Esto se logra con branch protection rules en GitHub (manual una sola vez).

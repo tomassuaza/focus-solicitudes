@@ -20,20 +20,27 @@ public class AuthController {
     private final AuthService authService;
     private final JwtService jwtService;
     private final UsuarioRepository usuarioRepo;
+    private final LoginRateLimiter rateLimiter;
     private final boolean demoEnabled;
 
     public AuthController(AuthService authService,
                            JwtService jwtService,
                            UsuarioRepository usuarioRepo,
+                           LoginRateLimiter rateLimiter,
                            @Value("${focus.demo-enabled:true}") boolean demoEnabled) {
         this.authService = authService;
         this.jwtService = jwtService;
         this.usuarioRepo = usuarioRepo;
+        this.rateLimiter = rateLimiter;
         this.demoEnabled = demoEnabled;
     }
 
     @PostMapping("/google")
-    public ResponseEntity<AuthResponse> loginGoogle(@Valid @RequestBody LoginRequest req) {
+    public ResponseEntity<AuthResponse> loginGoogle(
+        @Valid @RequestBody LoginRequest req,
+        jakarta.servlet.http.HttpServletRequest http) {
+        // Checklist seguridad #2: limitar intentos de login por IP.
+        rateLimiter.registrarIntento(http.getRemoteAddr());
         return ResponseEntity.ok(authService.loginConGoogle(req.idToken()));
     }
 

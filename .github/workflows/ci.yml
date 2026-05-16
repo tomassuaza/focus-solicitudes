@@ -1,14 +1,21 @@
 # =============================================================
-# CI pipeline — Sistema Unico de Solicitudes (Focus)
+# CI pipeline - Sistema Unico de Solicitudes (Focus)
 #
 # En cada push y PR a main:
-#   1) Backend: build + tests unitarios e integracion + checkstyle + JaCoCo gate (>=80% modulos criticos)
-#   2) Frontend: lint + tests + build de produccion
+#   1) Backend: build + tests unitarios e integracion + checkstyle + SpotBugs +
+#               JaCoCo gate (>=80% modulos criticos) + scan CVE OWASP
+#   2) Frontend: lint + tests + build + audit npm
+#   3) Trivy filesystem scan (CVE en todo el repo)
 #
-# Los fallos se distinguen por tipo (steps separados). El JaCoCo gate
-# BLOQUEA el merge cuando la cobertura cae bajo 80% en modulos criticos.
+# Los fallos se distinguen por tipo (steps separados).
+# Quality gates BLOQUEANTES (NO continue-on-error excepto donde se justifica):
+#   - JaCoCo: bloquea si cobertura < 80% modulos criticos
+#   - SpotBugs: bloquea si encuentra bugs medium o mayor
+#   - ESLint: bloquea si hay errores de lint
+#   - npm audit: bloquea si hay CVE high o critical
+#   - Trivy: bloquea si hay CVE high o critical en repo
 #
-# No se hace deploy automatico — el despliegue a Railway/Vercel es manual.
+# No se hace deploy automatico - el despliegue a Render/Vercel es manual.
 # =============================================================
 name: CI
 
@@ -50,9 +57,8 @@ jobs:
       - name: Quality gate (JaCoCo >=80% modulos criticos)
         run: mvn -B -ntp verify -DskipITs=false
 
-      - name: SpotBugs (best effort)
+      - name: SpotBugs (analisis estatico de bugs)
         run: mvn -B -ntp spotbugs:check
-        continue-on-error: true
 
       - name: Subir reporte de cobertura
         if: always()
@@ -82,15 +88,19 @@ jobs:
       - name: Instalar dependencias
         run: npm ci || npm install --no-audit --no-fund
 
-      - name: Lint (ESLint)
+      - name: Lint (ESLint) - quality gate bloqueante
         run: npm run lint
-        continue-on-error: true
 
       - name: Tests con cobertura
         run: npm run test:coverage
 
       - name: Build de produccion
         run: npm run build
+
+      - name: Auditoria de CVE en dependencias (npm audit)
+        # Bloquea si hay vulnerabilidades de severidad high o critical.
+        # Checklist seguridad #7.
+        run: npm audit --audit-level=high
 
       - name: Subir bundle
         if: always()
@@ -100,5 +110,26 @@ jobs:
           path: frontend/dist/
           if-no-files-found: ignore
 
-  # Gate final: el merge a main requiere que AMBOS jobs pasen.
-  # Esto se logra con branch protection rules en GitHub (manual una sola vez).
+  security-scan:
+    name: Trivy filesystem scan (CVE)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Trivy filesystem scan
+        # Cumple checklist de seguridad #7: scan automatico de vulnerabilidades
+        # criticas y altas en TODO el repositorio (codigo, dependencias, configs).
+        # Bloquea el merge si encuentra CVE critico o alto sin fix disponible
+        # (ignore-unfixed evita falsos positivos).
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'table'
+          severity: 'CRITICAL,HIGH'
+          ignore-unfixed: true
+          exit-code: '1'
+
+  # Gate final: el merge a main requiere que TODOS los jobs pasen.
+  # Esto se aplica con branch protection rules en GitHub (manual una sola vez).

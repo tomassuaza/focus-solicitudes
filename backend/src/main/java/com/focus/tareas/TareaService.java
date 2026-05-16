@@ -93,6 +93,18 @@ public class TareaService {
         Tarea t = tareaRepo.findById(tareaId)
             .orElseThrow(() -> ApiException.notFound("Tarea", tareaId));
 
+        // Checklist seguridad #3: ownership.
+        // Solo el responsable de la tarea (o roles superiores) puede cerrarla.
+        // El COORDINADOR puede cerrar cualquiera (supervision).
+        // DIRECCION puede cerrar cualquiera.
+        // UNIDAD solo puede cerrar tareas donde es responsable.
+        if (quien != null && quien.getRol() == com.focus.common.Rol.UNIDAD
+            && t.getResponsable() != null
+            && !t.getResponsable().getEmail().equals(quien.getEmail())) {
+            throw ApiException.forbidden(
+                "No puedes cerrar una tarea que no es tuya (ownership)");
+        }
+
         if (t.getEstado() != EstadoTarea.EN_CURSO) {
             throw ApiException.badRequest("Solo se pueden cerrar tareas en estado EN_CURSO");
         }

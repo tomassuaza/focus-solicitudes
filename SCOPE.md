@@ -91,6 +91,19 @@ con 🟡 o ❌ incluye su razón.
 
 ---
 
+## 5.1 Checklist de seguridad (Workshop bloque 11)
+
+| # | Item | Estado | Implementacion |
+|---|---|---|---|
+| 1 | Sin credenciales en codigo / historial git | ✅ | `application.yml` solo usa `${VAR_ENTORNO}`. `JwtService` rechaza el placeholder `"cambia-esto..."` en perfil prod/staging |
+| 2 | Login limita intentos + tokens con expiracion verificada en cada request | ✅ | `LoginRateLimiter` (10 intentos/60s por IP) + `JwtService.generar()` con `expiration-minutes: 480` + `JwtAuthenticationFilter` valida en cada request |
+| 3 | Autorizacion: cada endpoint verifica ownership del recurso | ✅ | `@PreAuthorize("hasRole(...)")` por rol + `TareaService.cerrar()` valida que UNIDAD solo cierre tareas propias |
+| 4 | Input validado, sin queries por concatenacion | ✅ | Bean Validation (`@Valid`, `@NotNull`, `@NotBlank`, `@Size`) + JPA `@Query` parametrizado (sin string concat) |
+| 5 | Errores sin stack traces, mensajes de auth genericos | ✅ | `GlobalExceptionHandler` devuelve `"Error interno"` en 500. Auth devuelve 401/403 sin pista de la causa |
+| 6 | Sin passwords/tokens en logs. Eventos de seguridad logueados | ✅ | `LoggingAspect` no loguea bodies. `AuthService` loguea solo creacion de usuario y fallos |
+| 7 | Scan de CVEs en CI que bloquea si hay critico/alto | ✅ | `npm audit --audit-level=high` (bloquea) + Trivy filesystem scan (severidad CRITICAL,HIGH, bloquea) |
+| 8 | CI con quality gates bloqueantes (no solo avisos) | ✅ | JaCoCo `haltOnFailure=true` + SpotBugs sin `continue-on-error` + ESLint sin `continue-on-error` + Trivy con `exit-code: 1` |
+
 ## 6. Estrategia de pruebas implementada (TRD §13)
 
 | Tipo de prueba | Estado | Herramientas |

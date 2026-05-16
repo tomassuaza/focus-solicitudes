@@ -124,6 +124,22 @@ class TareaServiceTest {
     }
 
     @Test
+    void cerrarTareaQueNoEsTuya_unidadFalla() {
+        // Checklist seguridad #3: ownership. Un usuario UNIDAD que NO es el responsable
+        // no puede cerrar la tarea de otro.
+        Usuario otroDuenno = new Usuario("otro@focus.co", "Otro", Rol.UNIDAD);
+        Tarea t = new Tarea(solicitudRegistrada);
+        t.setResponsable(otroDuenno);
+        t.setEstado(EstadoTarea.EN_CURSO);
+        when(tareaRepo.findById(1L)).thenReturn(Optional.of(t));
+
+        Usuario otroUsuario = new Usuario("intruso@focus.co", "Intruso", Rol.UNIDAD);
+        assertThatThrownBy(() -> service.cerrar(1L, 30, otroUsuario))
+            .isInstanceOf(ApiException.class)
+            .hasMessageContaining("ownership");
+    }
+
+    @Test
     void cerrarTareaPendienteFalla() {
         Tarea t = new Tarea(solicitudRegistrada);
         when(tareaRepo.findById(1L)).thenReturn(Optional.of(t));

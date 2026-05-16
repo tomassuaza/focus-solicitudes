@@ -19,17 +19,12 @@ export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  async function entrarComoDemo() {
+  async function entrarComoDemo(rol = 'COORDINADOR') {
     setLoading(true);
     setError(null);
     try {
-      // En dev, el SecurityFilterChain esta abierto. Saltamos auth para entrar.
-      login({
-        token: 'dev-token',
-        email: 'coordinador@focusagency.co',
-        nombre: 'Coordinador Demo',
-        rol: 'COORDINADOR',
-      });
+      const data = await authApi.loginDemo(rol);
+      login(data);
       navigate('/nueva');
     } catch (e) {
       setError(e.message);
@@ -71,14 +66,35 @@ export default function Login() {
         Iniciar con Google
       </button>
 
-      <button
-        className="btn btn-secondary"
-        style={{ width: '100%' }}
-        disabled={loading}
-        onClick={entrarComoDemo}
-      >
-        Continuar como demo (solo dev)
-      </button>
+      <p className="muted" style={{ marginTop: '1rem', marginBottom: '0.5rem' }}>
+        O entra con un rol demo:
+      </p>
+      <div style={{ display: 'flex', gap: '0.5rem' }}>
+        <button
+          className="btn btn-secondary"
+          style={{ flex: 1 }}
+          disabled={loading}
+          onClick={() => entrarComoDemo('COORDINADOR')}
+        >
+          Coordinador
+        </button>
+        <button
+          className="btn btn-secondary"
+          style={{ flex: 1 }}
+          disabled={loading}
+          onClick={() => entrarComoDemo('UNIDAD')}
+        >
+          Unidad
+        </button>
+        <button
+          className="btn btn-secondary"
+          style={{ flex: 1 }}
+          disabled={loading}
+          onClick={() => entrarComoDemo('DIRECCION')}
+        >
+          Direccion
+        </button>
+      </div>
     </div>
   );
 }

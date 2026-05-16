@@ -1,0 +1,67 @@
+# =============================================================
+# Perfil PROD - configuracion para deploy en la nube
+#
+# DECISION INTENCIONAL: para el piloto en Render free tier usamos H2
+# in-memory en lugar de MySQL externo, porque:
+#   1. Render free no provee MySQL gratuito (solo PostgreSQL).
+#   2. Permite demo end-to-end sin costo ni configuracion adicional.
+#   3. La aplicacion arranca con datos seed (V1__init.sql) en cada arranque.
+#
+# Esta es una desviacion DOCUMENTADA en SCOPE.md respecto al Design Doc
+# que prescribe MySQL. La migracion a MySQL/PostgreSQL es transparente
+# (solo cambia esta config); el codigo usa JPA estandar.
+# =============================================================
+
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:h2:mem:focus;MODE=MySQL;DB_CLOSE_DELAY=-1}
+    driver-class-name: ${DB_DRIVER:org.h2.Driver}
+    username: ${DB_USER:sa}
+    password: ${DB_PASSWORD:}
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: false
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+
+  mail:
+    host: ${SMTP_HOST:smtp.gmail.com}
+    port: ${SMTP_PORT:587}
+    username: ${SMTP_USER:}
+    password: ${SMTP_PASSWORD:}
+
+server:
+  port: ${PORT:8080}
+  forward-headers-strategy: framework
+
+focus:
+  google:
+    client-id: ${GOOGLE_OAUTH_CLIENT_ID:demo-client-id}
+    allowed-domain: ${GOOGLE_ALLOWED_DOMAIN:}
+  jwt:
+    secret: ${JWT_SECRET:cambia-esto-por-uno-aleatorio-de-al-menos-32-caracteres}
+  cors:
+    allowed-origins: ${FRONTEND_URL:*}
+  notificaciones:
+    from: ${SMTP_USER:no-reply@focusagency.co}
+  # Habilita /api/auth/demo para sustentacion. En despliegues reales sin demo
+  # establecer focus.demo-enabled=false via variable de entorno.
+  demo-enabled: ${FOCUS_DEMO_ENABLED:true}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info
+
+logging:
+  level:
+    com.focus: INFO
+    org.springframework.web: WARN

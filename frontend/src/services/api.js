@@ -34,6 +34,8 @@ async function request(path, options = {}) {
 export const authApi = {
   loginGoogle: (idToken) =>
     request('/api/auth/google', { method: 'POST', body: JSON.stringify({ idToken }) }),
+  loginDemo: (rol = 'COORDINADOR') =>
+    request(`/api/auth/demo?rol=${encodeURIComponent(rol)}`),
 };
 
 // === Solicitudes ===
